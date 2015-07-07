@@ -29,5 +29,16 @@ def get_inspection_page(**kwargs):
             params[k] = v
     resp = requests.get(INSPECTION_DOMAIN + INSPECTION_PATH, params)
     resp.raise_for_status()
+    write_inspection_page(resp.content)
     return resp.content, resp.encoding
 
+
+def write_inspection_page(content):
+    with open('inspection_page.html', 'w') as fh:
+        fh.write(content)
+
+
+def load_inspection_page():
+    with open('inspection_page.html', 'r') as fh:
+        content = fh.read()
+    return content, 'utf-8'
