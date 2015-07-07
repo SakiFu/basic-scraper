@@ -1,5 +1,6 @@
 import sys
 import requests
+import re
 from bs4 import BeautifulSoup
 
 INSPECTION_DOMAIN = 'http://info.kingcounty.gov'
@@ -52,6 +53,18 @@ def parse_source(content, encoding='utf-8'):
     return parsed
 
 
+def extract_data_listings(content):
+    id_finder = re.compile(r'PR[\d]+~')
+    return content.find_all('div', id=id_finder)
+
+
+def has_two_tds(elem):
+    is_tr = elem.name == 'tr'
+    children = elem.find_all('td', recursive=False)
+    has_two = len(children) == 2
+    return is_tr and has_two
+
+
 if __name__ == '__main__':
     kwargs = {
         'Inspection_Start': '7/1/2014',
@@ -63,4 +76,9 @@ if __name__ == '__main__':
     else:
         content, encoding = get_inspection_page(**kwargs)
     doc = parse_source(content, encoding)
-    print doc.prettify(encoding=encoding)
+    listings = extract_data_listings(doc)
+    for listing in listings:
+        metadata_rows = listing.find('tbody').find_all(
+            has_two_tds, recursive=False
+        )
+        print len(metadata_rows)
