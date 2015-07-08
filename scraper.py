@@ -1,6 +1,7 @@
 import sys
 import requests
 import re
+import geocoder
 from bs4 import BeautifulSoup
 
 INSPECTION_DOMAIN = 'http://info.kingcounty.gov'
@@ -74,7 +75,7 @@ def clean_data(td):
 
 
 def extract_restaurant_metadata(elem):
-    metadata_rows = listing.find('tbody').find_all(
+    metadata_rows = elem.find('tbody').find_all(
         has_two_tds, recursive=False
     )
     rdata = {}
@@ -121,13 +122,13 @@ def extract_score_data(listing):
     return data
 
 
-if __name__ == '__main__':
+def generate_results(test=False):
     kwargs = {
         'Inspection_Start': '7/1/2014',
         'Inspection_End': '7/1/2015',
         'Zip_Code': '98004'
     }
-    if len(sys.argv) > 1 and sys.argv[1] == 'test':
+    if test:
         content, encoding = load_inspection_page()
     else:
         content, encoding = get_inspection_page(**kwargs)
@@ -136,5 +137,21 @@ if __name__ == '__main__':
     for listing in listings:
         metadata = extract_restaurant_metadata(listing)
         score_data = extract_score_data(listing)
-        metadata.setdefault(u'Scores', score_data)
-        print metadata
+        metadata.update(score_data)
+        yield metadata
+
+
+def get_geojson(result):
+    address = " ".join(result.get('Address', ''))
+    if not address:
+        return None
+    geocoded = geocoder.google(address)
+    return geocoded.geojson
+
+
+if __name__ == '__main__':
+    import pprint
+    test = len(sys.argv) > 1 and sys.argv[1] == 'test'
+    for result in generate_results(test):
+        geo_result = get_geojson(result)
+        pprint.pprint(geo_result)
